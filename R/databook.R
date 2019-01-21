@@ -2,44 +2,30 @@
 #'
 #' generate_databook creates a bookdown book with one "chapter" for each variable
 #'
-#' @param file data file to read
+#' @param dir which directory to generate the databook in
+#' @param templates a list of templates to generate the databook from
+#' @param parameters a list of lists with data to fill each template
 
-generate_databook <- function(
-  file,
-  dest,
-  reader = readr::read_csv,
-  get_template = get_template,
-  get_data = get_data
-  ) {
+generate_databook <- function(dir, templates, parameters) {
 
-  # check the file exists and is accessible
-  fs::file_exists(file)
+  fs::dir_create(dir)
 
-  # check that the destination exists
-  fs::dir_exists(dest)
+  # copy in the relevant bookdown files
 
-  # check `reader` is a function
-  rlang::isfunction(reader)
+  # check that the length of templates and parameters matches
+  if(length(templates) != length(parameters)) {
+    stop("`templates` and `parameters` are not the same length")
+  }
 
-  # try to read the file with `reader`, if unsuccessful capture the error, explain why
-  # functions stopping and return error
-  # `reader` unable to read data
-  # `error`
-  .data <- reader(file)
+  templs <- lapply(templates, readLines)
 
-  templates <- get_template(.data, ...)
-  data <- get_data(.data, ...)
-
-  # for each variable create a Rmd that
-  # fill the template
-  for(i in seq_along(vars)){
-
+  # call whisker.render for each template
+  for(i in seq_along(templates)) {
     writeLines(
-      whisker::whisker.render(
-        readLines(template[i]),
-        data[i]
-        )
-      )
+      whisker::whisker.render(templs[[i]], parameters[[i]]),
+      # need a way to name Rmd files appropriately
+      paste0(dir,"/", "0", i, "-databook.Rmd")
+    )
   }
 }
 
@@ -51,25 +37,23 @@ generate_databook <- function(
 #'
 #' @return a character vector of paths to template .Rmd files
 
-get_template <- function(.data) {
-  types <-  vapply(.data, class, character(1))
+get_template <- function(template) {
 
-  # check that system.files returns something?
-  find_template <- function(template) system.file("templates", template, package = "databook")
+  find_template <- function(template) system.file(paste0("templates/", template), package = "databook")
 
-  vapply(
-    types,
-    switch,
-    character(1),
-    "numeric" = find_template("numeric.Rmd"),
-    "integer" = find_template("numeric.Rmd"),
-    "character" = find_template("character.Rmd"),
-    "factor" = find_template("character.Rmd"),
-    ""
+  templ <- switch(
+    template,
+    "numeric" = find_template("numeric-template.Rmd"),
+    "categorical" = find_template("categorical-template.Rmd")
   )
+
+  # check that a template actually gets returned
+  if(is.null(templ)) stop("No template was found")
+
+  templ
 }
 
-#' get_data takes a vector and returns a list of data about that vector.
+#' fill_template takes a vector and returns a list of data about that vector.
 #' It is used to build up a list that is passed into whisker.render.
 #' This should be named something else - it's just taking the name from
 #' the argument in whisker.render...
@@ -83,7 +67,7 @@ get_template <- function(.data) {
 #' Do what you want from there
 
 
-get_data <- function(.data) {
+fill_template <- function(.data) {
   lapply(names(.data), function(i) {
     list(
       var_name = i,
