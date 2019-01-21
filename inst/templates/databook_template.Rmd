@@ -1,0 +1,16 @@
+---
+title: "Databook Template: {{var_name}}"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+First we need to test the reader function:
+
+```{r}
+df <- {{reader}}
+
+```
+

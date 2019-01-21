@@ -1,0 +1,12 @@
+---
+title: "Variable {{variable}}"
+output: html_document
+---
+
+```{r}
+library(ggplot2)
+df <- {{data}}
+
+ggplot(df, aes({{variable}})) + 
+  geom_histogram()
+```
