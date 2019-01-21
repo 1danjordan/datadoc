@@ -13,4 +13,5 @@ Suggests:
     testthat,
     bookdown
 Imports: 
-    whisker
+    whisker,
+    fs
