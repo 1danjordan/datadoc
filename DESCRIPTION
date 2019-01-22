@@ -1,11 +1,11 @@
-Package: databook
+Package: datadoc
 Type: Package
-Title: Generate databooks from datasets
+Title: Generate datasets documentation as bookdown projects
 Version: 0.1.0
 Author: Daniel Jordan
 Maintainer: Daniel Jordan <dandermotj@gmail.com>
-Description: databook generates a bookdown project from a set of templates 
-    to automate the review and fundamental analysis of a dataset. 
+Description: datadoc generates a bookdown project from a set of templates 
+    to automate the review and fundamental analysis and documentation of a dataset. 
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true

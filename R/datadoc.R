@@ -1,12 +1,12 @@
-#' A Databook is a bookdown book generated from a dataset
+#' A datadoc is a bookdown book generated from a dataset
 #'
-#' generate_databook creates a bookdown book with one "chapter" for each variable
+#' generate_datadoc creates a bookdown book with one "chapter" for each variable
 #'
-#' @param dir which directory to generate the databook in
-#' @param templates a list of templates to generate the databook from
+#' @param dir which directory to generate the datadoc in
+#' @param templates a list of templates to generate the datadoc from
 #' @param parameters a list of lists with data to fill each template
 
-generate_databook <- function(dir, templates, parameters) {
+generate_datadoc <- function(dir, templates, parameters) {
 
   fs::dir_create(dir)
 
@@ -18,13 +18,13 @@ generate_databook <- function(dir, templates, parameters) {
   }
 
   templs <- lapply(templates, readLines)
+  inc <- incrementer()
 
-  # call whisker.render for each template
   for(i in seq_along(templates)) {
     writeLines(
       whisker::whisker.render(templs[[i]], parameters[[i]]),
       # need a way to name Rmd files appropriately
-      paste0(dir,"/", "0", i, "-databook.Rmd")
+      paste0(dir,"/", inc(), "-datadoc.Rmd")
     )
   }
 }
@@ -39,7 +39,7 @@ generate_databook <- function(dir, templates, parameters) {
 
 get_template <- function(template) {
 
-  find_template <- function(template) system.file(paste0("templates/", template), package = "databook")
+  find_template <- function(template) system.file(paste0("templates/", template), package = "datadoc")
 
   templ <- switch(
     template,
@@ -76,3 +76,19 @@ fill_template <- function(.data) {
     )
   })
 }
+
+
+#' Helper for prepending an increasing number for file names so bookdown
+#' sees them in the correct order
+
+incrementer <- function(start = 0) {
+  i <- start
+  function() {
+    i <<- i + 1
+    if (i < 10) paste0("0", i)
+    else as.character(i)
+  }
+}
+
+inc <- incrementer(9)
+inc()

@@ -6,7 +6,7 @@ replace_ext <- function(x, ext) sub('\\..*$', ext, x)
 test_that("Simple template is filled and renders", {
   template <-
 '---
-title: "Databook Template: {{variable}}"
+title: "Datadoc Template: {{variable}}"
 output: html_document
 ---
 
@@ -48,8 +48,8 @@ test_that("Example templates render", {
   expect_true(file_exists(replace_ext(tmp_categorical, ".html")))
 })
 
-test_that("generate-databook renders templates and data", {
-  path_tmp <- paste0(fs::path_temp(), "/databook")
+test_that("generate-datadoc renders templates and data", {
+  path_tmp <- paste0(fs::path_temp(), "/datadoc")
 
   templates <- c(get_template("categorical"), get_template("numeric"))
   parameters <- list(
@@ -57,13 +57,13 @@ test_that("generate-databook renders templates and data", {
     list(variable = "Height", data = "datasets::trees")
   )
 
-  generate_databook(path_tmp, templates, parameters)
+  generate_datadoc(path_tmp, templates, parameters)
 
   # very naive for the moment - just check the files are there
   # future you, compare them line for line / check that they render
   expect_true(
-    file_exists(paste0(path_tmp, "/01-databook.Rmd")) &
-      file_exists(paste0(path_tmp, "/02-databook.Rmd"))
+    file_exists(paste0(path_tmp, "/01-datadoc.Rmd")) &
+      file_exists(paste0(path_tmp, "/02-datadoc.Rmd"))
   )
 
 })
