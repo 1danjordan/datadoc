@@ -1,3 +1,23 @@
+#' Take a dataset and generte a datadoc bookdown project
+#'
+#' @param data an expression that evaluates to a dataframe
+
+datadoc <- function(data) {
+  data_expr <- rlang::enexpr(data)
+
+  # make sure it evaluates
+  d <- rlang::with_handlers(
+    eval(data_expr),
+    error = ~ abort("data doesn't evaluate")
+  )
+
+  if(!is.data.frame(d)) abort("data is not a data frame")
+
+  # do a bunch of stuff
+
+
+}
+
 #' A datadoc is a bookdown book generated from a dataset
 #'
 #' generate_datadoc creates a bookdown book with one "chapter" for each variable
@@ -23,7 +43,6 @@ generate_datadoc <- function(dir, templates, parameters) {
   for(i in seq_along(templates)) {
     writeLines(
       whisker::whisker.render(templs[[i]], parameters[[i]]),
-      # need a way to name Rmd files appropriately
       paste0(dir,"/", inc(), "-datadoc.Rmd")
     )
   }
@@ -90,5 +109,4 @@ incrementer <- function(start = 0) {
   }
 }
 
-inc <- incrementer(9)
-inc()
+rlang::abort

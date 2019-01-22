@@ -1,22 +1,22 @@
-# databook
+# datadoc
 
-databook is an R package for generating a 'databook' from a dataset, using bookdown. A databook is a reproducible, rich and structured format for documenting data. 
+datadoc is an R package for automatically generating a datadoc - documentation for a dataset - as a bookdown project. A datadoc is a reproducible, rich and structured format for documenting data. 
 
 Much of the focus of data analysis and data science is building models for describing some phenomenon or predicting outcomes. However, model building accounts for a very small portion of an analyst's time. The majority of an analyst's time is spent on collecting, curating, correcting and combining datasets. Data analysis is an interactive exercise, so analysts often discover  understand the characteristics of a dataset as they analyse it. Their subsequent knowledge about the characteristics of a dataset are rarely recorded or communicated in a structured format. 
 
-In regulated industries where statistical models are audited, a regulator will examine *the suitability of the data first*, not the model - as the saying goes "Garbage in, garbage out". Each variable and data source must be described and documented. This apparently straightforward task can be very complicated and time consuming. databook sets out to automate a lot of this process. 
+In regulated industries where statistical models are audited, a regulator will examine *the suitability of the data first*, not the model - as the saying goes "Garbage in, garbage out". Each variable and data source must be described and documented. This apparently straightforward task can be very complicated and time consuming. datadoc sets out to automate a lot of this process. 
 
-## Other Forms of Dataset References 
+## Other Forms of Dataset Documentation
 
-There are many ways of writing references for datasets. I've chosen three cases below that vary widely in their richness and detail. 
+There are many ways of writing documentation for datasets. I've chosen three cases below that vary widely in their richness and detail. 
 
 ### Google Quick Draw Data
 
 The [Quick Draw](https://quickdraw.withgoogle.com/data) documentation. Amazing interacive website.
 
-The [UCI Machine Learning Repository](https://archive.ics.uci.edu/ml/datasets/statlog+(german+credit+data)) provides a reference page for each dataset. The reference starts with a with a summary table and sections regarding the data's source, additional information, attribute information, relevant papers and papers that cite this dataset. 
+The [UCI Machine Learning Repository](https://archive.ics.uci.edu/ml/datasets/statlog+(german+credit+data)) provides a reference page for each dataset. The reference starts with a summary table and sections regarding the data's source, additional information, attribute information, relevant papers and papers that cite this dataset. 
 
-In some sense the `summary` function is a simple dataset reference. I provides many of the key statistics of interest such as mean, minimum and maximum for numeric variables and simple counts for categorical variables. 
+In some sense the `summary` function is simple documentation for a dataset. I provides many of the key statistics of interest such as mean, minimum and maximum for numeric variables and simple counts for categorical variables. 
 
 ``` r
 summary(iris[c(1, 2, 5)])
