@@ -1,21 +1,25 @@
 #' Take a dataset and generte a datadoc bookdown project
 #'
-#' @param data an expression that evaluates to a dataframe
+#' @param data an expression that evaluates to a data frame
+#' @param templater a function that takes data and any other arguments
+#'   returns a list of lists, each list containing a template and a list
+#'   parameters to fill that template
 
-datadoc <- function(data) {
-  data_expr <- rlang::enexpr(data)
+datadoc <- function(data, templater, ...) {
 
-  # make sure it evaluates
-  d <- rlang::with_handlers(
-    eval(data_expr),
-    error = ~ abort("data doesn't evaluate")
+  dots <- list2(...)
+
+  data_expr <- enexpr(data)
+  d <- with_handlers(
+    eval_tidy(data_expr),
+    error = ~ abort(paste("The expression \n", quo_name(data_expr), "\ncouldn't be evaluated"))
   )
 
-  if(!is.data.frame(d)) abort("data is not a data frame")
+  if(!is.data.frame(d)) abort(paste("`data` is a", type_of(d), "not a data frame"))
 
-  # do a bunch of stuff
-
-
+  # now with the data frame d we want:
+  #   1. build up a list of templates
+  #   2. build up a list of parameters to fill those templates
 }
 
 #' A datadoc is a bookdown book generated from a dataset
@@ -34,7 +38,7 @@ generate_datadoc <- function(dir, templates, parameters) {
 
   # check that the length of templates and parameters matches
   if(length(templates) != length(parameters)) {
-    stop("`templates` and `parameters` are not the same length")
+    abort("`templates` and `parameters` are not the same length")
   }
 
   templs <- lapply(templates, readLines)
@@ -67,7 +71,7 @@ get_template <- function(template) {
   )
 
   # check that a template actually gets returned
-  if(is.null(templ)) stop("No template was found")
+  if(is.null(templ)) abort("No template was found")
 
   templ
 }
@@ -109,4 +113,4 @@ incrementer <- function(start = 0) {
   }
 }
 
-rlang::abort
+#' @import rlang
