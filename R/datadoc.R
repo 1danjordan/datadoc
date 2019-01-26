@@ -1,25 +1,38 @@
 #' Take a dataset and generte a datadoc bookdown project
 #'
-#' @param data an expression that evaluates to a data frame
+#' @param data an expression that evaluates to a data frame or list
 #' @param templater a function that takes data and any other arguments
 #'   returns a list of lists, each list containing a template and a list
 #'   parameters to fill that template
+#' @param ... any arguments to pass into the templater
+#' @param dir directory to generate datadoc in
 
-datadoc <- function(data, templater, ...) {
+datadoc <- function(data, templater = get_template, ..., dir) {
 
-  dots <- list2(...)
-
+  # Capture the data expression and evaluate it in a clean
+  # environment to make sure it will evaluate in the Rmd template properly
   data_expr <- enexpr(data)
   d <- with_handlers(
-    eval_tidy(data_expr),
+    eval_tidy(data_expr, env = new_environment()),
     error = ~ abort(paste("The expression \n", quo_name(data_expr), "\ncouldn't be evaluated"))
   )
 
-  if(!is.data.frame(d)) abort(paste("`data` is a", type_of(d), "not a data frame"))
+  if(!is_list(d)) abort(paste("`data` is a", type_of(d), "not a data frame/list"))
 
-  # now with the data frame d we want:
-  #   1. build up a list of templates
-  #   2. build up a list of parameters to fill those templates
+  templater_nm <- quo_name(templater)
+  templates <- with_handlers(
+    templater(data, ...),
+    error = ~ abort(paste(templater_nm, "couldn't be evaluated"))
+  )
+
+  # make sure templater returns a list
+  if(!is_list(templates)) abort(paste(templater_nm, "must return a list, not a", type_of(templates)))
+
+  # check that templates has the names templates and data
+  check_nms <- any(!has_name(templates, c("templates", "data")))
+  if(check_nms) abort(paste(templater_nm, "must have `templates` and `data`. Instead it has names:", names(templates)))
+
+  generate_datadoc(data, templates, parameters, dir)
 }
 
 #' A datadoc is a bookdown book generated from a dataset
@@ -30,7 +43,7 @@ datadoc <- function(data, templater, ...) {
 #' @param templates a list of templates to generate the datadoc from
 #' @param parameters a list of lists with data to fill each template
 
-generate_datadoc <- function(dir, templates, parameters) {
+generate_datadoc <- function(templates, parameters, dir) {
 
   fs::dir_create(dir)
 
@@ -52,13 +65,30 @@ generate_datadoc <- function(dir, templates, parameters) {
   }
 }
 
-#' get_template just has to return a character vector with paths to the template
-#' you want to use - this could simply return a single path, or be dependent on
-#' the data types of each variable
+#' templater templater takes a data frame and any other arguments
+#' and decides which templates to use and the data that goes in them.
 #'
-#' @param .data a dataset
+#' This is just a standard datadoc templater, but you can write your own.
+#' It just needs to return a named list containing two lists of equal length:
 #'
-#' @return a character vector of paths to template .Rmd files
+#'     templates: list of paths to templates files
+#'     data: list of parameters to fill those templates
+
+templater <- function(data) {
+
+  # First chapter will be a summary of the entire dataset
+  # the rest will be be one chapter for each variable in the data frame
+  template_types <- c("summary", lapply(data, type_of))
+  templates <- lapply(template_types, find_template)
+
+  parameters <- list(
+    data = rep(expr_deparse(data_expr, length(template_types))),
+    var_nms = c("Summary", names(data))
+  )
+}
+
+#' get_template returns a path to a template on your file system
+#' @param template the type of template you want
 
 get_template <- function(template) {
 
@@ -66,12 +96,15 @@ get_template <- function(template) {
 
   templ <- switch(
     template,
-    "numeric" = find_template("numeric-template.Rmd"),
-    "categorical" = find_template("categorical-template.Rmd")
+    "double"    = find_template("numeric-template.Rmd"),
+    "integer"   = find_template("numeric-template.Rmd"),
+    "character" = find_template("categorical-template.Rmd"),
+    "factor"    = find_template("categorical-template.Rmd"),
+    "summary"   = find_template("summary-template.Rmd")
   )
 
   # check that a template actually gets returned
-  if(is.null(templ)) abort("No template was found")
+  if(is.null(templ)) abort(paste("No template was found for", template))
 
   templ
 }
