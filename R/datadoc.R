@@ -1,90 +1,88 @@
 #' Take a dataset and generte a datadoc bookdown project
 #'
-#' @param data an expression that evaluates to a data frame or list
+#' @param data_expr an expression that evaluates to a data frame or list
+#' @param dir target directory for generating datadoc - defaults to working directory
+#' @param title the title of your datadoc
 #' @param templater a function that takes data and any other arguments
 #'   returns a list of lists, each list containing a template and a list
 #'   parameters to fill that template
 #' @param ... any arguments to pass into the templater
-#' @param dir directory to generate datadoc in
 
-datadoc <- function(data, templater = get_template, ..., dir) {
+datadoc <- function(data_expr, dir = getwd(), title = "datadoc", template = templater, ...) {
 
   # Capture the data expression and evaluate it in a clean
   # environment to make sure it will evaluate in the Rmd template properly
-  data_expr <- enexpr(data)
   d <- with_handlers(
-    eval_tidy(data_expr, env = new_environment()),
-    error = ~ abort(paste("The expression \n", quo_name(data_expr), "\ncouldn't be evaluated"))
+    eval_tidy(data_expr, env = environment()),
+    error = ~ abort(paste("The expression \n", quo_text(data_expr), "\ncouldn't be evaluated"))
   )
 
-  if(!is_list(d)) abort(paste("`data` is a", type_of(d), "not a data frame/list"))
+  if(!is.data.frame(d)) abort(paste("`data` is a", type_of(d), "not a dataframe"))
 
-  templater_nm <- quo_name(templater)
-  templates <- with_handlers(
-    templater(data, ...),
-    error = ~ abort(paste(templater_nm, "couldn't be evaluated"))
-  )
+  templates <- template(data_expr = data_expr, data = d, title = title, ...)
 
-  # make sure templater returns a list
-  if(!is_list(templates)) abort(paste(templater_nm, "must return a list, not a", type_of(templates)))
-
-  # check that templates has the names templates and data
-  check_nms <- any(!has_name(templates, c("templates", "data")))
-  if(check_nms) abort(paste(templater_nm, "must have `templates` and `data`. Instead it has names:", names(templates)))
-
-  generate_datadoc(data, templates, parameters, dir)
+  generate_datadoc(templates, dir = dir)
 }
 
 #' A datadoc is a bookdown book generated from a dataset
 #'
 #' generate_datadoc creates a bookdown book with one "chapter" for each variable
 #'
-#' @param dir which directory to generate the datadoc in
 #' @param templates a list of templates to generate the datadoc from
-#' @param parameters a list of lists with data to fill each template
+#' @param dir which directory to generate the datadoc in
 
-generate_datadoc <- function(templates, parameters, dir) {
+generate_datadoc <- function(templates, dir) {
 
   fs::dir_create(dir)
 
-  # copy in the relevant bookdown files
-
-  # check that the length of templates and parameters matches
-  if(length(templates) != length(parameters)) {
-    abort("`templates` and `parameters` are not the same length")
-  }
-
-  templs <- lapply(templates, readLines)
-  inc <- incrementer()
-
+  # Render each template with its data
   for(i in seq_along(templates)) {
     writeLines(
-      whisker::whisker.render(templs[[i]], parameters[[i]]),
-      paste0(dir,"/", inc(), "-datadoc.Rmd")
+      whisker::whisker.render(
+        template = readLines(templates[[i]][["template"]]),
+        data = templates[[i]][["data"]]
+      ),
+      paste0(dir,"/", templates[[i]][["filename"]])
     )
   }
 }
 
-#' templater templater takes a data frame and any other arguments
-#' and decides which templates to use and the data that goes in them.
-#'
-#' This is just a standard datadoc templater, but you can write your own.
-#' It just needs to return a named list containing two lists of equal length:
-#'
-#'     templates: list of paths to templates files
-#'     data: list of parameters to fill those templates
+#' templater returns a list of templates and data
+#' to be rendered into a datadoc
 
-templater <- function(data) {
+templater <- function(data_expr, data, title, ...) {
 
-  # First chapter will be a summary of the entire dataset
-  # the rest will be be one chapter for each variable in the data frame
-  template_types <- c("summary", lapply(data, type_of))
-  templates <- lapply(template_types, find_template)
+  inc <- incrementer()
 
-  parameters <- list(
-    data = rep(expr_deparse(data_expr, length(template_types))),
-    var_nms = c("Summary", names(data))
+  build_template <- function(var_name, var_type) {
+    list(
+      list(
+        data = list(variable = var_name),
+        template = get_template(var_type),
+        filename = paste0(inc(), "-", var_name, ".Rmd")
+      ))
+  }
+
+  # build up the templates for each variable in the dataset
+  var_names <- colnames(data)
+  var_types <- vapply(data, class, "")
+  var_templates <- mapply(build_template, var_names, var_types)
+
+  # build up the basic bookdown templates
+  bookdown_templates <- list(
+    index = list(
+      template = get_template("index"),
+      data = list(title = title, data = quo_text(data_expr)),
+      filename = "index.Rmd"
+    ),
+    output = list(
+      template = get_template("_output"),
+      data = list(title = title),
+      filename = "_output.yml"
+    )
   )
+
+  append(bookdown_templates, var_templates)
 }
 
 #' get_template returns a path to a template on your file system
@@ -96,11 +94,13 @@ get_template <- function(template) {
 
   templ <- switch(
     template,
-    "double"    = find_template("numeric-template.Rmd"),
+    "index"     = find_template("index.Rmd"),
+    "_output"   = find_template("_output.yml"),
+    "numeric"   = find_template("numeric-template.Rmd"),
     "integer"   = find_template("numeric-template.Rmd"),
     "character" = find_template("categorical-template.Rmd"),
     "factor"    = find_template("categorical-template.Rmd"),
-    "summary"   = find_template("summary-template.Rmd")
+    "Date"      = find_template("date-template.Rmd")
   )
 
   # check that a template actually gets returned
@@ -108,31 +108,6 @@ get_template <- function(template) {
 
   templ
 }
-
-#' fill_template takes a vector and returns a list of data about that vector.
-#' It is used to build up a list that is passed into whisker.render.
-#' This should be named something else - it's just taking the name from
-#' the argument in whisker.render...
-#'
-#' This one just returns the name of each column and returns it in a list
-#'
-#' Depending on your template, you need to make sure that your template is properly
-#' filled
-#'
-#' In datadown we need to be able to read the data and that's about it...
-#' Do what you want from there
-
-
-fill_template <- function(.data) {
-  lapply(names(.data), function(i) {
-    list(
-      var_name = i,
-      file = file,
-      reader = reader
-    )
-  })
-}
-
 
 #' Helper for prepending an increasing number for file names so bookdown
 #' sees them in the correct order
