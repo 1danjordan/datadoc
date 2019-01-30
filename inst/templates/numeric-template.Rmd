@@ -1,7 +1,4 @@
----
-title: "Variable {{variable}}"
-output: html_document
----
+# {{variable}}
 
 This is the numeric template
 
