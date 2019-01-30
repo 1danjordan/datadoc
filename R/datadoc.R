@@ -12,10 +12,7 @@ datadoc <- function(data_expr, dir = getwd(), title = "datadoc", template = temp
 
   # Capture the data expression and evaluate it in a clean
   # environment to make sure it will evaluate in the Rmd template properly
-  d <- with_handlers(
-    eval_tidy(data_expr, env = environment()),
-    error = ~ abort(paste("The expression \n", quo_text(data_expr), "\ncouldn't be evaluated"))
-  )
+  d <- eval(data_expr)
 
   if(!is.data.frame(d)) abort(paste("`data` is a", type_of(d), "not a dataframe"))
 
@@ -65,14 +62,15 @@ templater <- function(data_expr, data, title, ...) {
 
   # build up the templates for each variable in the dataset
   var_names <- colnames(data)
-  var_types <- vapply(data, class, "")
+  var_types <- vapply(data, function(x) class(x)[[1]], "")
   var_templates <- mapply(build_template, var_names, var_types)
 
-  # build up the basic bookdown templates
+  data_expr_str <- paste0(deparse(data_expr), collapse = "\n")
+
   bookdown_templates <- list(
     index = list(
       template = get_template("index"),
-      data = list(title = title, data = quo_text(data_expr)),
+      data = list(title = title, data = data_expr_str),
       filename = "index.Rmd"
     ),
     output = list(
@@ -100,7 +98,8 @@ get_template <- function(template) {
     "integer"   = find_template("numeric-template.Rmd"),
     "character" = find_template("categorical-template.Rmd"),
     "factor"    = find_template("categorical-template.Rmd"),
-    "Date"      = find_template("date-template.Rmd")
+    "Date"      = find_template("date-template.Rmd"),
+    "POSIXct"   = find_template("date-template.Rmd")
   )
 
   # check that a template actually gets returned
@@ -120,5 +119,3 @@ incrementer <- function(start = 0) {
     else as.character(i)
   }
 }
-
-#' @import rlang
